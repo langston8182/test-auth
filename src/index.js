@@ -1,5 +1,5 @@
 // index.js
-import { callbackController, userinfoController } from "./test.controller.js";
+import {callbackController, protectedController, userinfoController} from "./test.controller.js";
 
 export const handler = async (event) => {
     console.log("Événement reçu :", JSON.stringify(event, null, 2));
@@ -10,6 +10,8 @@ export const handler = async (event) => {
 
     if (path === "/auth/callback") {
         return await callbackController(event);
+    } else if (path === "/protected")  {
+        return await protectedController(event)
     } else if (path === "/userinfo") {
         return await userinfoController(event);
     } else {

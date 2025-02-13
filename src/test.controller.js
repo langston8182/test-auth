@@ -31,6 +31,7 @@ export const callbackController = async (event) => {
     }
 
     const { access_token, id_token, refresh_token } = tokenResult;
+    console.log('result : ', tokenResult)
     if (!access_token || !id_token || !refresh_token) {
         console.error("Réponse incomplète lors de l'échange des tokens :", tokenResult);
         return {
@@ -38,7 +39,6 @@ export const callbackController = async (event) => {
             body: JSON.stringify({ message: "Réponse de token incomplète" }),
         };
     }
-
     // 3. Préparation des cookies sécurisés
     const cookieOptions = "HttpOnly; Secure; SameSite=Strict; Path=/";
     const cookies = [
@@ -50,14 +50,33 @@ export const callbackController = async (event) => {
 
     // 4. Redirection vers la page d'accueil
     return {
-        statusCode: 302,
+        statusCode: 200,
         headers: {
-            Location: "https://test.cyrilmarchive.com",
-            "Set-Cookie": cookies,
+            "Set-Cookie": cookies.join(", "),  // ✅ Convertir le tableau en string
+            "Access-Control-Allow-Origin": "https://testui.cyrilmarchive.com",
+            "Access-Control-Allow-Credentials": "true",
+            "Content-Type": "application/json"
         },
-        body: "",
+        body: JSON.stringify({ message: "Authentification réussie" }),
+    };
+
+
+};
+
+export const protectedController = async (event) => {
+    console.log("Accès à la route protégée");
+
+    return {
+        statusCode: 200,
+        headers: {
+            "Access-Control-Allow-Origin": "https://ton-frontend.com",
+            "Access-Control-Allow-Credentials": "true",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: "Accès sécurisé" }),
     };
 };
+
 
 /**
  * Gère la récupération des informations utilisateur à partir du cookie id_token.
@@ -65,19 +84,19 @@ export const callbackController = async (event) => {
 export const userinfoController = async (event) => {
     console.log("Traitement de /userinfo");
 
-    // 1. Récupération du header "Cookie"
-    const cookieHeader = event.headers?.cookie || event.headers?.Cookie;
-    if (!cookieHeader) {
+    // 1. Récupération des cookies
+    const cookieArray = event.cookies || event.Cookies;
+    if (!cookieArray || cookieArray.length === 0) {
         console.error("Aucun cookie présent dans la requête");
         return {
             statusCode: 400,
             body: JSON.stringify({ message: "Cookies manquants dans la requête" }),
         };
     }
-    console.log("Header Cookie :", cookieHeader);
+    console.log("Cookies reçus :", cookieArray);
 
-    // 2. Analyse des cookies
-    const cookies = cookieHeader.split(";").reduce((acc, cookieStr) => {
+    // 2. Analyse des cookies (à partir d'un tableau)
+    const cookies = cookieArray.reduce((acc, cookieStr) => {
         const [name, ...rest] = cookieStr.trim().split("=");
         acc[name] = rest.join("=");
         return acc;
@@ -97,7 +116,6 @@ export const userinfoController = async (event) => {
 
     // 4. Décodage du JWT pour extraire les informations utilisateur
     try {
-        // Ici, on utilise jwt.decode() pour extraire le payload sans vérifier la signature.
         const decoded = jwt.decode(id_token);
         console.log("JWT décodé :", decoded);
 
@@ -105,7 +123,6 @@ export const userinfoController = async (event) => {
             throw new Error("Échec du décodage du JWT");
         }
 
-        // Extraction des informations, supposant que le payload contient 'given_name' et 'family_name'
         const { given_name, family_name } = decoded;
         return {
             statusCode: 200,
@@ -123,3 +140,4 @@ export const userinfoController = async (event) => {
         };
     }
 };
+
